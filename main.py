@@ -14,12 +14,14 @@ name is set into the picture in large cream type on a deep teal band,
 with the line "THE ISLES ABOVE THE SEA" beneath it.
 """
 
+import hashlib
 import os
 import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE = os.path.join(HERE, "assets", "entry.png")
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
 def main() -> int:
@@ -27,6 +29,18 @@ def main() -> int:
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "entry.png")
     shutil.copyfile(SOURCE, path)
+    # Verify the copy: a poster that is not a valid PNG, or not the exact
+    # bytes we ship, must fail loudly instead of submitting a broken file.
+    with open(path, "rb") as fh:
+        data = fh.read()
+    if data[:8] != PNG_MAGIC:
+        print("error: output is not a PNG file", file=sys.stderr)
+        return 1
+    if len(data) != os.path.getsize(SOURCE):
+        print("error: output size does not match the poster", file=sys.stderr)
+        return 1
+    print("wrote {} ({} bytes, sha256 {})".format(
+        path, len(data), hashlib.sha256(data).hexdigest()))
     return 0
 
 
